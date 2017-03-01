@@ -9,6 +9,9 @@ describe HammerCLIForeman::ComputeResource do
   include CommandTestHelper
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:compute_resources, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::ComputeResource::ListCommand.new("", ctx) }
 
@@ -18,7 +21,7 @@ describe HammerCLIForeman::ComputeResource do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
       it_should_print_columns ["Name", "Id", "Provider"]
@@ -28,6 +31,9 @@ describe HammerCLIForeman::ComputeResource do
 
 
   context "InfoCommand" do
+    before do
+      ResourceMocks.compute_resource_show
+    end
 
     let(:cmd) { HammerCLIForeman::ComputeResource::InfoCommand.new("", ctx) }
 

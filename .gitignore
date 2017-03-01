@@ -1,7 +1,12 @@
 # Ruby
 Gemfile.lock
 Gemfile.local
+Gemfile.local.rb
 pkg
+.bundle
+
+# RubyMine
+.idea
 
 # Tests
 test/reports
@@ -13,3 +18,7 @@ coverage
 
 # Editors
 tags
+
+# Locale files
+locale/*/*.edit.po
+locale/*/*.po.time_stamp

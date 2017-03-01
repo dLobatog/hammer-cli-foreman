@@ -98,10 +98,41 @@ describe HammerCLIForeman::ExceptionHandler do
     ex = RestClient::InternalServerError.new(response)
     ex.stubs(:message).returns(response)
 
-    output.expects(:print_error).with("Something went wrong", "Unformatted\nlines\n")
+    output.expects(:print_error).with(heading, "Unformatted\nlines\n")
     err_code = handler.handle_exception(ex, :heading => heading)
     err_code.must_equal HammerCLI::EX_SOFTWARE
   end
 
-end
+  it "should print exception message on internal error exception with message that is not nested" do
+    response = <<-RESPONSE
+    {"message":"Some internal exception"}
+    RESPONSE
+    ex = RestClient::InternalServerError.new(response)
+    ex.stubs(:message).returns(response)
 
+    output.expects(:print_error).with(heading, "Some internal exception")
+    err_code = handler.handle_exception(ex, :heading => heading)
+    err_code.must_equal HammerCLI::EX_SOFTWARE
+  end
+
+  context "redirects" do
+    let(:response) { HammerCLIForeman.foreman_api.api.send(:create_fake_response, 301, '', 'GET', 'http://foreman.example.com/api/architectures') }
+    it "should detect http to https redirection error" do
+      response.headers[:location] = 'https://foreman.example.com/api/architectures'
+      ex = RestClient::MovedPermanently.new(response)
+
+      output.expects(:print_error).with(heading, "Redirection of API call detected.\nIt seems hammer is configured to use HTTP and the server prefers HTTPS.\nUpdate your server url configuration\nyou can set 'follow_redirects' to one of :default or :always to enable redirects following")
+      err_code = handler.handle_exception(ex, :heading => heading)
+      err_code.must_equal HammerCLI::EX_CONFIG
+    end
+
+    it "should detect redirection error" do
+      response.headers[:location] = 'http://foreman.example.com/api/other_resource'
+      ex = RestClient::MovedPermanently.new(response)
+
+      output.expects(:print_error).with(heading, "Redirection of API call detected.\nUpdate your server url configuration\nyou can set 'follow_redirects' to one of :default or :always to enable redirects following")
+      err_code = handler.handle_exception(ex, :heading => heading)
+      err_code.must_equal HammerCLI::EX_CONFIG
+    end
+  end
+end

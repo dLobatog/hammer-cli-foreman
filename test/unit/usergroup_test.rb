@@ -9,6 +9,9 @@ describe HammerCLIForeman::Usergroup do
 
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:usergroups, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::Usergroup::ListCommand.new("", ctx) }
 
@@ -20,6 +23,7 @@ describe HammerCLIForeman::Usergroup do
     context "output" do
       it_should_print_column "Id"
       it_should_print_column "Name"
+      it_should_print_column "Admin"
     end
 
   end
@@ -37,6 +41,7 @@ describe HammerCLIForeman::Usergroup do
       with_params ["--id=1"] do
         it_should_print_column "Id"
         it_should_print_column "Name"
+        it_should_print_column "Admin"
         it_should_print_column "Users"
         it_should_print_column "User groups"
         it_should_print_column "Roles"

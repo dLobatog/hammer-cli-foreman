@@ -8,6 +8,9 @@ describe HammerCLIForeman::Medium do
   include CommandTestHelper
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:media, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::Medium::ListCommand.new("", ctx) }
 
@@ -17,7 +20,7 @@ describe HammerCLIForeman::Medium do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
       it_should_print_column "Name"
@@ -63,7 +66,7 @@ describe HammerCLIForeman::Medium do
     end
 
     with_params ["--name=medium_x", "--path=http://some.path/", "--operatingsystem-ids=1,2"] do
-      it_should_call_action :create, {'medium' => {'name' => 'medium_x', 'path' => 'http://some.path/', 'operatingsystem_ids' => ['1', '2']}}
+      it_should_call_action :create, {'medium' => {'name' => 'medium_x', 'path' => 'http://some.path/', 'operatingsystem_ids' => [1]}}
     end
   end
 
@@ -92,7 +95,7 @@ describe HammerCLIForeman::Medium do
     end
 
     with_params ["--id=1", "--new-name=medium_x", "--path=http://some.path/", "--operatingsystem-ids=1,2"] do
-      it_should_call_action :update, {'id' => '1', 'name' => 'medium_x', 'medium' => {'name' => 'medium_x', 'path' => 'http://some.path/', 'operatingsystem_ids' => ['1', '2']}}
+      it_should_call_action :update, {'id' => '1', 'name' => 'medium_x', 'medium' => {'name' => 'medium_x', 'path' => 'http://some.path/', 'operatingsystem_ids' => [1]}}
     end
 
   end

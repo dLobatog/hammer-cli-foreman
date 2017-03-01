@@ -13,12 +13,13 @@ module HammerCLIForeman
   require 'hammer_cli_foreman/version'
   require 'hammer_cli_foreman/output'
   require 'hammer_cli_foreman/output/fields'
-  require 'hammer_cli_foreman/credentials'
   require 'hammer_cli_foreman/exception_handler'
   require 'hammer_cli_foreman/option_builders'
   require 'hammer_cli_foreman/param_filters'
   require 'hammer_cli_foreman/id_resolver'
   require 'hammer_cli_foreman/dependency_resolver'
+  require 'hammer_cli_foreman/defaults'
+
 
   begin
     require 'hammer_cli_foreman/commands'
@@ -107,8 +108,20 @@ module HammerCLIForeman
       'HammerCLIForeman::SmartClassParameter', 'hammer_cli_foreman/smart_class_parameter'
     )
 
+    HammerCLI::MainCommand.lazy_subcommand('smart-variable', _("Manipulate smart variables."),
+      'HammerCLIForeman::SmartVariable', 'hammer_cli_foreman/smart_variable'
+    )
+
     HammerCLI::MainCommand.lazy_subcommand('proxy', _("Manipulate smart proxies."),
       'HammerCLIForeman::SmartProxy', 'hammer_cli_foreman/smart_proxy'
+    )
+
+    HammerCLI::MainCommand.lazy_subcommand('realm', _("Manipulate realms."),
+      'HammerCLIForeman::Realm', 'hammer_cli_foreman/realm'
+    )
+
+    HammerCLI::MainCommand.lazy_subcommand('settings', _("Change server settings."),
+      'HammerCLIForeman::Settings', 'hammer_cli_foreman/settings'
     )
 
     HammerCLI::MainCommand.lazy_subcommand('subnet', _("Manipulate subnets."),
@@ -127,6 +140,9 @@ module HammerCLIForeman
       'HammerCLIForeman::Usergroup', 'hammer_cli_foreman/usergroup'
     )
 
+    HammerCLI::MainCommand.lazy_subcommand('config-group', _("Manipulate config groups."),
+      'HammerCLIForeman::ConfigGroup', 'hammer_cli_foreman/config_group'
+    )
 
   rescue => e
     handler = HammerCLIForeman::ExceptionHandler.new(:context => {}, :adapter => :base)

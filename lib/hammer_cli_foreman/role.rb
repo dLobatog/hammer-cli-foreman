@@ -10,8 +10,17 @@ module HammerCLIForeman
       output do
         field :id, _("Id")
         field :name, _("Name")
+        field :builtin, _("Builtin"),  Fields::Boolean
       end
 
+      build_options
+    end
+
+    class InfoCommand < HammerCLIForeman::InfoCommand
+      output ListCommand.output_definition do
+        field :description, _("Description")
+        HammerCLIForeman::References.taxonomies(self)
+      end
       build_options
     end
 
@@ -20,7 +29,7 @@ module HammerCLIForeman
       command_name "filters"
       resource :filters, :index
 
-      option "--id", "ID", _("User role id")
+      option "--id", "ID", _("User role id"), :referenced_resource => 'role'
 
       output HammerCLIForeman::Filter::ListCommand.output_definition
 
@@ -39,6 +48,10 @@ module HammerCLIForeman
       build_options do |o|
         o.expand.primary(:roles)
         o.without(:search)
+      end
+
+      def validate_options
+        validator.any(:option_name, :option_id).required
       end
     end
 

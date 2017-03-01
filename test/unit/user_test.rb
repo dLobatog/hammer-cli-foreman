@@ -10,6 +10,9 @@ describe HammerCLIForeman::User do
   let(:cmd_module) { HammerCLIForeman::User }
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:users, :index, [])
+    end
 
     let(:cmd) { cmd_module::ListCommand.new("", ctx ) }
 
@@ -19,8 +22,7 @@ describe HammerCLIForeman::User do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
-
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
       it_should_print_n_records
       it_should_print_columns ["Id", "Login", "Name", "Email"]
     end
@@ -29,6 +31,9 @@ describe HammerCLIForeman::User do
 
 
   context "InfoCommand" do
+    before do
+      ResourceMocks.users_show
+    end
 
     let(:cmd) { cmd_module::InfoCommand.new("", ctx) }
 
@@ -41,7 +46,7 @@ describe HammerCLIForeman::User do
     context "output" do
       with_params ["--id=1"] do
         it_should_print_n_records 1
-        it_should_print_columns ["Id", "Login", "Name", "Email"]
+        it_should_print_columns ["Id", "Login", "Name", "Email", "Admin", "Effective admin"]
         it_should_print_columns ["Last login", "Created at", "Updated at"]
       end
     end

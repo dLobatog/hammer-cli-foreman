@@ -31,8 +31,19 @@ module HammerCLIForeman
 
     def self.usergroups(dsl)
       dsl.build do
-        collection :usergroups, _("User groups"), :numbered => false do
-          custom_field Fields::Reference
+        collection :usergroups, _("User groups"), :numbered => true do
+          field :name, _("Usergroup")
+          field :id, _("Id"), Fields::Id
+          collection :roles, _("Roles"), :numbered => false do
+            custom_field Fields::Reference
+          end
+        end
+        collection :cached_usergroups, _("Inherited User groups"), :numbered => true do
+          field :name, _("Usergroup")
+          field :id, _("Id"), Fields::Id
+          collection :roles, _("Roles"), :numbered => false do
+            custom_field Fields::Reference
+          end
         end
       end
     end
@@ -121,7 +132,7 @@ module HammerCLIForeman
     def self.operating_systems(dsl)
       dsl.build do
         collection :operatingsystems, _("Operating systems"), :numbered => false do
-          custom_field Fields::Reference, :name_key => :fullname
+          custom_field Fields::Reference, :name_key => :title
         end
       end
     end

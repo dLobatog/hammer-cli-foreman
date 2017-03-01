@@ -8,6 +8,9 @@ describe HammerCLIForeman::Domain do
   include CommandTestHelper
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:domains, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::Domain::ListCommand.new("", ctx) }
 
@@ -17,7 +20,7 @@ describe HammerCLIForeman::Domain do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
       it_should_print_columns ["Id", "Name"]
@@ -98,7 +101,7 @@ describe HammerCLIForeman::Domain do
 
     context "parameters" do
       it_should_accept "name, value and domain name", ["--name=name", "--value=val", "--domain=name"]
-      it_should_accept "name, value and domain id", ["--name=name", "--value=val", "--domain-id=id"]
+      it_should_accept "name, value and domain id", ["--name=name", "--value=val", "--domain-id=1"]
       # it_should_fail_with "name missing", ["--value=val", "--domain=name"]
       # it_should_fail_with "value missing", ["--name=name", "--domain=name"]
       # it_should_fail_with "domain name or id missing", ["--name=name", "--value=val"]
@@ -114,7 +117,7 @@ describe HammerCLIForeman::Domain do
 
     context "parameters" do
       it_should_accept "name and domain name", ["--name=param", "--domain=name"]
-      it_should_accept "name and domain id", ["--name=param", "--domain-id=id"]
+      it_should_accept "name and domain id", ["--name=param", "--domain-id=1"]
 
       # it_should_fail_with "name missing", ["--domain=name"]
       # it_should_fail_with "domain name or id missing", ["--name=param"]

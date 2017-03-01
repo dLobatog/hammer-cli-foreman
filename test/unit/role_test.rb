@@ -29,6 +29,21 @@ describe HammerCLIForeman::Role do
   end
 
 
+  context "InfoCommand" do
+
+    let(:cmd) { HammerCLIForeman::Role::InfoCommand.new("", ctx) }
+
+    context "output" do
+
+      with_params ["--name=role"] do
+        it_should_print_n_records 1
+        it_should_print_columns ["Id", "Name", "Builtin"]
+      end
+    end
+
+  end
+
+
   context "CreateCommand" do
 
     let(:cmd) { HammerCLIForeman::Role::CreateCommand.new("", ctx) }
@@ -79,14 +94,17 @@ describe HammerCLIForeman::Role do
     context "parameters" do
       it_should_accept "name", ["--name=role"]
       it_should_accept "id", ["--id=1"]
+      it_should_fail_with "no arguments"
     end
 
     context "output" do
-      it_should_print_column "Id"
-      it_should_print_column "Resource type"
-      it_should_print_column "Search"
-      it_should_print_column "Role"
-      it_should_print_column "Permissions"
+      with_params ["--id=1"] do
+        it_should_print_column "Id"
+        it_should_print_column "Resource type"
+        it_should_print_column "Search"
+        it_should_print_column "Role"
+        it_should_print_column "Permissions"
+      end
     end
 
   end

@@ -8,6 +8,9 @@ describe HammerCLIForeman::Environment do
   include CommandTestHelper
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:environments, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::Environment::ListCommand.new("", ctx) }
 
@@ -17,7 +20,7 @@ describe HammerCLIForeman::Environment do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
       it_should_print_column "Name"
@@ -99,8 +102,8 @@ describe HammerCLIForeman::Environment do
     let(:cmd) { HammerCLIForeman::Environment::SCParamsCommand.new("", ctx) }
 
     context "parameters" do
-      it_should_accept "name", ["--name=env"]
-      it_should_accept "id", ["--id=1"]
+      it_should_accept "environment", ["--environment=env"]
+      it_should_accept "environment-id", ["--environment-id=1"]
       # it_should_fail_with "name or id missing", [] # TODO: temporarily disabled, parameters are checked in the id resolver
     end
 

@@ -23,9 +23,10 @@ describe HammerCLIForeman::Organization do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
+      it_should_print_column "Description"
       it_should_print_column "Name"
       it_should_print_column "Id"
     end
@@ -53,6 +54,7 @@ describe HammerCLIForeman::Organization do
         it_should_print_n_records 1
         it_should_print_column "Name"
         it_should_print_column "Id"
+        it_should_print_column "Parent"
         it_should_print_column "Created at"
         it_should_print_column "Updated at"
       end

@@ -12,6 +12,7 @@ module HammerCLIForeman
       output do
         field :id, _("Id")
         field :name, _("Name")
+        field :description, _("Description")
       end
 
       build_options
@@ -21,9 +22,10 @@ module HammerCLIForeman
     class InfoCommand < HammerCLIForeman::InfoCommand
       include HammerCLIForeman::ResourceSupportedTest
 
-      option "--id", "ID", " "
+      option "--id", "ID", " ", :referenced_resource => 'organization'
 
       output ListCommand.output_definition do
+        field nil, _("Parent"), Fields::SingleReference, :key => :parent
         HammerCLIForeman::References.users(self)
         HammerCLIForeman::References.smart_proxies(self)
         HammerCLIForeman::References.subnets(self)
@@ -60,7 +62,7 @@ module HammerCLIForeman
     class UpdateCommand < HammerCLIForeman::UpdateCommand
       include HammerCLIForeman::ResourceSupportedTest
 
-      option "--id", "ID", " "
+      option "--id", "ID", " ", :referenced_resource => 'organization'
 
       success_message _("Organization updated")
       failure_message _("Could not update the organization")
@@ -72,7 +74,7 @@ module HammerCLIForeman
     class DeleteCommand < HammerCLIForeman::DeleteCommand
       include HammerCLIForeman::ResourceSupportedTest
 
-      option "--id", "ID", " "
+      option "--id", "ID", " ", :referenced_resource => 'organization'
 
       success_message _("Organization deleted")
       failure_message _("Could not delete the organization")
@@ -80,6 +82,27 @@ module HammerCLIForeman
       build_options do |o|
         o.expand.primary(:organizations)
       end
+    end
+
+
+    class SetParameterCommand < HammerCLIForeman::Parameter::SetCommand
+      desc _("Create or update parameter for an organization.")
+
+      success_message_for :update, _("Parameter [%{name}] updated to value [%{value}]")
+      success_message_for :create, _("Parameter [%{name}] created with value [%{value}]")
+      failure_message _("Could not set organization parameter")
+
+      build_options
+    end
+
+
+    class DeleteParameterCommand < HammerCLIForeman::Parameter::DeleteCommand
+      desc _("Delete parameter for an organization.")
+
+      success_message _("Parameter [%{name}] deleted")
+      failure_message _("Could not delete organization parameter")
+
+      build_options
     end
 
 
@@ -92,6 +115,7 @@ module HammerCLIForeman
     HammerCLIForeman::AssociatingCommands::SmartProxy.extend_command(self)
     HammerCLIForeman::AssociatingCommands::User.extend_command(self)
     HammerCLIForeman::AssociatingCommands::ConfigTemplate.extend_command(self)
+    HammerCLIForeman::AssociatingCommands::Location.extend_command(self)
 
     autoload_subcommands
   end

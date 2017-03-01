@@ -1,5 +1,134 @@
 Release notes
 =============
+### 0.9.0 (2016-12-15)
+* Auth overrides only unauthorized exception ([PR #271](https://github.com/theforeman/hammer-cli-foreman/pull/271)) ([#17650](http://projects.theforeman.org/issues/17650))
+* Session auth in hammer ([PR #269](https://github.com/theforeman/hammer-cli-foreman/pull/269)) ([#8016](http://projects.theforeman.org/issues/8016))
+* Display override value order as long text ([#17355](http://projects.theforeman.org/issues/17355))
+* Showing roles inherited from usergroups ([#16016](http://projects.theforeman.org/issues/16016))
+* The 'start' key always needs a 1 or 0 ([#17393](http://projects.theforeman.org/issues/17393))
+* Compute resource specific details in host help ([PR #263](https://github.com/theforeman/hammer-cli-foreman/pull/263)) ([#12472](http://projects.theforeman.org/issues/12472))
+* Fix compute-resource info ([#17077](http://projects.theforeman.org/issues/17077))
+* List override in filter output ([#17109](http://projects.theforeman.org/issues/17109))
+* Added description field to User in hammer ([#16772](http://projects.theforeman.org/issues/16772))
+* Added description field to Roles in hammer ([#16771](http://projects.theforeman.org/issues/16771))
+* add taxonomies to role info ([#16799](http://projects.theforeman.org/issues/16799))
+* Adds 'builtin' attribute to Role list ([#16406](http://projects.theforeman.org/issues/16406))
+
+### 0.8.0 (2016-09-01)
+* add realm commands to hammer ([PR #240](https://github.com/theforeman/hammer-cli-foreman/pull/240)) ([#4918](http://projects.theforeman.org/issues/4918))
+* Renamed name to variable for smart_variables ([#16119](http://projects.theforeman.org/issues/16119))
+* displaying use_puppet_default in sc-param info ([#16059](http://projects.theforeman.org/issues/16059))
+* show admin flag in user-group listing ([#12473](http://projects.theforeman.org/issues/12473))
+* pin fast_gettext to < 1.1.0 for ruby < 2.1 ([PR #257](https://github.com/theforeman/hammer-cli-foreman/pull/257)) ([#16141](http://projects.theforeman.org/issues/16141))
+* Remove parameters api call from host info command ([#15585](http://projects.theforeman.org/issues/15585))
+* Add hostgroup create/update tests ([#15312](http://projects.theforeman.org/issues/15312))
+* Add description to organization and location list ([PR #247](https://github.com/theforeman/hammer-cli-foreman/pull/247)) ([#15502](http://projects.theforeman.org/issues/15502))
+* Add add/remove location command to organization ([PR #248](https://github.com/theforeman/hammer-cli-foreman/pull/248)) ([#15501](http://projects.theforeman.org/issues/15501))
+* Update documented test data path ([PR #246](https://github.com/theforeman/hammer-cli-foreman/pull/246)) ([#15433](http://projects.theforeman.org/issues/15433))
+
+### 0.7.0 (2016-06-14)
+* Let print adapters decide whether to paginate ([#15257](http://projects.theforeman.org/issues/15257))
+* Forbid setting smart param override value and puppet default ([#13832](http://projects.theforeman.org/issues/13832))
+* Add rebuild config option for host ([PR#231](https://github.com/theforeman/hammer-cli-foreman/pull/231)) ([#12103](http://projects.theforeman.org/issues/12103))
+* Removing wrong colons from host create docs
+* i18n - remove underscore from override value error message
+* Typo in MissingSeachOptions ([#14007](http://projects.theforeman.org/issues/14007))
+* Add Catalan language ([#14947](http://projects.theforeman.org/issues/14947))
+* Hammer shows incorrect admin status when assign admin role using user group ([#14606](http://projects.theforeman.org/issues/14606))
+* Fixed response parsing for puppetclasses parameter ([#14930](http://projects.theforeman.org/issues/14930))
+* Display locked flag for templates and ptables ([#14943](http://projects.theforeman.org/issues/14943))
+* Document vmware `start` parameter
+* Fixes VMware name in docs for host create
+* Respect per_page set in config file ([#14530](http://projects.theforeman.org/issues/14530))
+* Provide success/failure message for associating commands ([#7492](http://projects.theforeman.org/issues/7492))
+* Add support for Gemfile.local.rb ([#14466](http://projects.theforeman.org/issues/14466))
+* Fixing path in docs for generated test json ([PR#226](https://github.com/theforeman/hammer-cli-foreman/pull/226))
+* Added clone command to config templates ([#13946](http://projects.theforeman.org/issues/13946))
+* Handle API request redirects with useful message ([#11147](http://projects.theforeman.org/issues/11147))
+* Newer version of apipie validates types for arrays ([#13966](http://projects.theforeman.org/issues/13966))
+* Show auth source name for all auth sources ([#7468](http://projects.theforeman.org/issues/7468))
+* Environment and Puppet proxy is not required ([#13926](http://projects.theforeman.org/issues/13926))
+* Added special method for dealing with puppetclasses ([#11880](http://projects.theforeman.org/issues/11880))
+* Make primary and provision flag optional ([#13927](http://projects.theforeman.org/issues/13927))
+
+### 0.6.0 (2016-02-25)
+* Names of sc-params are immutable ([#13830](http://projects.theforeman.org/issues/13830))
+* Support for command testing moved to core ([#4118](http://projects.theforeman.org/issues/4118))
+* Adding parent to taxonomies info command ([#13758](http://projects.theforeman.org/issues/13758))
+* Showing hidden_value? for smart variables and class parameters ([#13750](http://projects.theforeman.org/issues/13750))
+* Executing "hammer role filters" command throws SQL errors ([#13064](http://projects.theforeman.org/issues/13064))
+* Remove psych require from Gemfile ([#12797](http://projects.theforeman.org/issues/12797))
+* Hammer listing the sc-params shows puppetclass ([#12998](http://projects.theforeman.org/issues/12998))
+
+### 0.5.1 (2015-12-14)
+* Fixing dependency issues
+
+### 0.5.0 (2015-12-14)
+* Addng info command to role ([#7412](http://projects.theforeman.org/issues/7412))
+* Add defaults support for location/organization ([#11402](http://projects.theforeman.org/issues/11402))
+* Tests updated to work with Foreman 1.10 API ([#12260](http://projects.theforeman.org/issues/12260))
+* Commands for setting parameters at taxonomies ([#12699](http://projects.theforeman.org/issues/12699))
+* Change once to one in error message ([#12695](http://projects.theforeman.org/issues/12695))
+* Host create VMware docs update ([#12087](http://projects.theforeman.org/issues/12087))
+* Add option to overwrite conflicts on host changes ([#9208](http://projects.theforeman.org/issues/9208))
+* String parameters get double-quoted ([#12202](http://projects.theforeman.org/issues/12202))
+* Added IPAM desc on info command ([#11074](http://projects.theforeman.org/issues/11074))
+
+### 0.4.0 (2015-09-21)
+* Adding match_default to smart variables and smart class parameters ([#10731](http://projects.theforeman.org/issues/10731))
+* Missing field for VMWare host creation docs ([#11088](http://projects.theforeman.org/issues/11088))
+* Delete direct dependencies (refs [#11452](http://projects.theforeman.org/issues/11452))
+* Messages in associating commands weren't translated ([#7236](http://projects.theforeman.org/issues/7236))
+* Add root_pass option ([#11236](http://projects.theforeman.org/issues/11236))
+* Drop Ruby 1.8 support (refs [#11280](http://projects.theforeman.org/issues/11280))
+
+
+### 0.3.0 (2015-07-29)
+* Add normalizer converting id parameter values to numbers ([#11137](http://projects.theforeman.org/issues/11137))
+* Docs - updated information about host creation
+* Added some rough docs showing HammerCLIForeman::Command
+* Adding a command for building PXE default ([#3968](http://projects.theforeman.org/issues/3968))
+* Turn off pagination by default ([#10534](http://projects.theforeman.org/issues/10534))
+* Can't set array parameters on hosts ([#10547](http://projects.theforeman.org/issues/10547))
+
+
+### 0.2.0 (2015-04-23)
+* Adding default org and loc to user info ([#10251](http://projects.theforeman.org/issues/10251))
+* Host update resets some attributes ([#10215](http://projects.theforeman.org/issues/10215))
+* Improve handling of id search errors ([#9971](http://projects.theforeman.org/issues/9971))
+* Commands for managing host's interfaces ([#3849](http://projects.theforeman.org/issues/3849))
+* Support for smart variables and override values ([#2928](http://projects.theforeman.org/issues/2928))
+* Can't convert nil into Array in compute resouce info ([#7699](http://projects.theforeman.org/issues/7699))
+* Use correct domain for system locales, only load one domain ([#9648](http://projects.theforeman.org/issues/9648))
+* Allow disablement of record_to_common_format ([#8227](http://projects.theforeman.org/issues/8227))
+* Puppet-classes in host and hostgroup returns without an error ([#7473](http://projects.theforeman.org/issues/7473))
+* Does not resolve a nested host group to id when updating a host ([#9318](http://projects.theforeman.org/issues/9318))
+* User info doesn't display timezone and locale ([#9114](http://projects.theforeman.org/issues/9114))
+* Update to gettext 3.x ([#8980](http://projects.theforeman.org/issues/8980))
+* Commands for settings ([#2918](http://projects.theforeman.org/issues/2918))
+* Adds dns name association to domain cli ([#3630](http://projects.theforeman.org/issues/3630))
+* List of host facts is shown correctly ([#7187](http://projects.theforeman.org/issues/7187))
+* Add config directory to gemspec ([#8829](http://projects.theforeman.org/issues/8829))
+* List commands should not be interactive for csv output ([#3898](http://projects.theforeman.org/issues/3898))
+
+
+### 0.1.4 (2014-12-11)
+* sending puppet class ids ([#8651](http://projects.theforeman.org/issues/8651))
+* setting --puppet-class-ids on host create/update throws api exception ([#8642](http://projects.theforeman.org/issues/8642))
+* adding name equivalents to params in host/hostgroup create/update ([#8299](http://projects.theforeman.org/issues/8299))
+* id resolution for associted resources ([#8246](http://projects.theforeman.org/issues/8246))
+* added missing search option error message ([#5556](http://projects.theforeman.org/issues/5556))
+* OSs referenced by title ([#8247](http://projects.theforeman.org/issues/8247))
+* credentials definition moved to ApipieBindings ([#7408](http://projects.theforeman.org/issues/7408))
+* listing filters for roles always fail with an exception ([#7913](http://projects.theforeman.org/issues/7913))
+* api for operating systems now uses field 'title' ([#7917](http://projects.theforeman.org/issues/7917))
+* i18n - add zh_CN language
+* i18n - add de, it, pt_BR, zh_TW, ru, ja, ko languages
+* external user groups CLI ([#6879](http://projects.theforeman.org/issues/6879))
+* moved LDAP auth sources to separate command
+* adds command to manage ldap auth sources ([#2924](http://projects.theforeman.org/issues/2924))
+* avoid locale domain name conflict ([#7262](http://projects.theforeman.org/issues/7262))
+
 
 ### 0.1.3 (2014-08-20)
 * Update foreman.yml

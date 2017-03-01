@@ -1,39 +1,18 @@
+require 'hammer_cli_foreman/api'
+
 module HammerCLIForeman
 
-  CONNECTION_NAME = 'foreman'
-
   RESOURCE_NAME_MAPPING = {
-    :usergroup => :user_group
+    :usergroup => :user_group,
+    :usergroups => :user_groups,
+    :ptable => :partition_table,
+    :ptables => :partition_tables,
+    :puppetclass => :puppet_class,
+    :puppetclasses => :puppet_classes
   }
 
-  def self.credentials
-    @credentials ||= Credentials.new(
-      :username => (HammerCLI::Settings.get(:_params, :username) || ENV['FOREMAN_USERNAME'] || HammerCLI::Settings.get(:foreman, :username)),
-      :password => (HammerCLI::Settings.get(:_params, :password) || ENV['FOREMAN_PASSWORD'] || HammerCLI::Settings.get(:foreman, :password))
-    )
-    @credentials
-  end
-
-  def self.resource_config
-    config = {}
-    config[:uri] = HammerCLI::Settings.get(:_params, :host) || HammerCLI::Settings.get(:foreman, :host)
-    config[:credentials] = credentials
-    config[:logger] = Logging.logger['API']
-    config[:api_version] = 2
-    config[:aggressive_cache_checking] = HammerCLI::Settings.get(:foreman, :refresh_cache) || false
-    config[:headers] = { "Accept-Language" => HammerCLI::I18n.locale }
-    config[:language] = HammerCLI::I18n.locale
-    config[:timeout] = HammerCLI::Settings.get(:foreman, :request_timeout)
-    config[:timeout] = -1 if (config[:timeout] && config[:timeout].to_i < 0)
-    config
-  end
-
-  def self.foreman_api_connection
-    HammerCLI::Connection.create(
-      CONNECTION_NAME,
-      HammerCLI::Apipie::Command.resource_config.merge(resource_config),
-      HammerCLI::Apipie::Command.connection_options
-    )
+  def self.foreman_api
+    foreman_api_connection
   end
 
   def self.foreman_resource!(resource_name, options={})
@@ -42,7 +21,7 @@ module HammerCLIForeman
     else
       resource_name = resource_name.to_sym
     end
-    foreman_api_connection.api.resource(resource_name)
+    foreman_api.resource(resource_name)
   end
 
   def self.foreman_resource(resource_name, options={})
@@ -54,7 +33,7 @@ module HammerCLIForeman
   end
 
   def self.param_to_resource(param_name)
-    HammerCLIForeman.foreman_resource(param_name.gsub(/_id$/, ""), :singular => true)
+    HammerCLIForeman.foreman_resource(param_name.gsub(/_id[s]?$/, ""), :singular => true)
   end
 
   def self.collection_to_common_format(data)
@@ -141,13 +120,28 @@ module HammerCLIForeman
       end
       begin
         resolver.send("#{resource.singular_name}_id", opts)
-      rescue HammerCLIForeman::MissingSeachOptions => e
-        raise e unless (options[:required] == false)
+      rescue HammerCLIForeman::MissingSearchOptions => e
+        if (options[:required] == true || resource_search_requested(resource, opts))
+          logger.info "Error occured while searching for #{resource.singular_name}"
+          raise e
+        end
+      end
+    end
+
+    def get_resource_ids(resource, options={})
+      opts = resolver.scoped_options(resource.singular_name, all_options)
+      begin
+        resolver.send("#{resource.singular_name}_ids", opts)
+      rescue HammerCLIForeman::MissingSearchOptions => e
+        if (options[:required] == true || resource_search_requested(resource, opts, true))
+          logger.info "Error occured while searching for #{resource.name}"
+          raise e
+        end
       end
     end
 
     def self.resolver
-      api = HammerCLI::Connection.get("foreman").api
+      api = HammerCLI.context[:api_connection].get("foreman")
       HammerCLIForeman::IdResolver.new(api, HammerCLIForeman::Searchables.new)
     end
 
@@ -161,7 +155,30 @@ module HammerCLIForeman
     end
 
     def send_request
-      HammerCLIForeman.record_to_common_format(super)
+      transform_format(super)
+    rescue HammerCLIForeman::MissingSearchOptions => e
+
+      switches = self.class.find_options(:referenced_resource => e.resource.singular_name).map(&:long_switch)
+
+      if switches.empty?
+        error_message = _("Could not find %{resource}. Some search options were missing, please see --help.")
+      elsif switches.length == 1
+        error_message = _("Could not find %{resource}, please set option %{switches}.")
+      else
+        error_message = _("Could not find %{resource}, please set one of options %{switches}.")
+      end
+
+      raise MissingSearchOptions.new(
+        error_message % {
+          :resource => e.resource.singular_name,
+          :switches => switches.join(", ")
+        },
+        e.resource
+      )
+    end
+
+    def transform_format(data)
+      HammerCLIForeman.record_to_common_format(data)
     end
 
     def customized_options
@@ -175,6 +192,16 @@ module HammerCLIForeman
           params[HammerCLI.option_accessor_name(api_param.name)] = resource_id if resource_id
         end
       end
+
+      # resolve all '<resource_name>_ids' parameters if they are defined as options
+      IdArrayParamsFilter.new(:only_required => false).for_action(resource.action(action)).each do |api_param|
+        param_resource = HammerCLIForeman.param_to_resource(api_param.name)
+        if param_resource && respond_to?(HammerCLI.option_accessor_name("#{param_resource.singular_name}_ids"))
+          resource_ids = get_resource_ids(param_resource, :scoped => true, :required => api_param.required?)
+          params[HammerCLI.option_accessor_name(api_param.name)] = resource_ids if resource_ids
+        end
+      end
+
       # resolve 'id' parameter if it's defined as an option
       id_option_name = HammerCLI.option_accessor_name('id')
       params[id_option_name] ||= get_identifier if respond_to?(id_option_name)
@@ -191,6 +218,18 @@ module HammerCLIForeman
       params_pruned['id'] = params[id_option_name] if params[id_option_name]
       params_pruned
     end
+
+    private
+
+    def resource_search_requested(resource, options, plural=false)
+      # check if any searchable for given resource is set
+      filed_options = Hash[options.select { |opt, value| !value.nil? }].keys
+      searchable_options = searchables.for(resource).map do |o|
+        HammerCLI.option_accessor_name(plural ? o.plural_name : o.name)
+      end
+      !(filed_options & searchable_options).empty?
+    end
+
   end
 
 
@@ -198,17 +237,21 @@ module HammerCLIForeman
 
     action :index
 
+    RETRIEVE_ALL_PER_PAGE = 1000
     DEFAULT_PER_PAGE = 20
 
     def adapter
-      :table
+      @context[:adapter] || :table
     end
 
     def send_request
-      data = super
-      set = HammerCLIForeman.collection_to_common_format(data)
+      set = super
       set.map! { |r| extend_data(r) }
       set
+    end
+
+    def transform_format(data)
+      HammerCLIForeman.collection_to_common_format(data)
     end
 
     def extend_data(record)
@@ -220,12 +263,12 @@ module HammerCLIForeman
     end
 
     def execute
-      if respond_to?(:option_page) && respond_to?(:option_per_page)
-        self.option_page = (self.option_page || 1).to_i
-        self.option_per_page ||= HammerCLI::Settings.get(:ui, :per_page) || DEFAULT_PER_PAGE
-        browse_collection
+      if should_retrieve_all?
+        print_data(retrieve_all)
       else
-        retrieve_and_print
+        self.option_page = (self.option_page || 1).to_i if respond_to?(:option_page)
+        self.option_per_page = (self.option_per_page || HammerCLI::Settings.get(:ui, :per_page) || DEFAULT_PER_PAGE).to_i if respond_to?(:option_per_page)
+        print_data(send_request)
       end
 
       return HammerCLI::EX_OK
@@ -233,27 +276,29 @@ module HammerCLIForeman
 
     protected
 
+    def retrieve_all
+      self.option_per_page = RETRIEVE_ALL_PER_PAGE
+      self.option_page = 1
 
-    def browse_collection
-      list_next = true
+      d = send_request
+      all = d
 
-      while list_next do
-        d = retrieve_and_print
-
-        if (d.size >= self.option_per_page.to_i) && interactive?
-          answer = ask(_("List next page? (%s): ") % 'Y/n').downcase
-          list_next = (answer == 'y' || answer == '')
-          self.option_page += 1
-        else
-          list_next = false
-        end
+      while (d.size == RETRIEVE_ALL_PER_PAGE) do
+        self.option_page += 1
+        d = send_request
+        all += d
       end
+      all
     end
 
-    def retrieve_and_print
-      d = send_request
-      print_data d
-      d
+    def pagination_supported?
+      respond_to?(:option_page) && respond_to?(:option_per_page)
+    end
+
+    def should_retrieve_all?
+      retrieve_all = pagination_supported? && option_per_page.nil? && option_page.nil?
+      retrieve_all &&= HammerCLI::Settings.get(:ui, :per_page).nil? if output.adapter.paginate_by_default?
+      retrieve_all
     end
 
   end
@@ -303,8 +348,7 @@ module HammerCLIForeman
     end
 
     def send_request
-      data = super
-      record = HammerCLIForeman.record_to_common_format(data)
+      record = super
       extend_data(record)
     end
 
@@ -402,6 +446,11 @@ module HammerCLIForeman
       return superclass.associated_resource if superclass.respond_to? :associated_resource
     end
 
+    def self.default_message(format)
+      name = associated_resource ? associated_resource.singular_name.to_s : nil
+      format % { :resource_name => name.gsub(/_|-/, ' ') } unless name.nil?
+    end
+
     def get_associated_identifier
       get_resource_id(associated_resource, :scoped => true)
     end
@@ -448,6 +497,14 @@ module HammerCLIForeman
       description.strip.empty? ? _("Associate a resource") : description
     end
 
+    def self.failure_message(msg = nil)
+      super(msg) || default_message(_('Could not associate the %{resource_name}'))
+    end
+
+    def self.success_message(msg = nil)
+      super(msg) || default_message(_('The %{resource_name} has been associated'))
+    end
+
     def get_new_ids
       ids = get_current_ids.map(&:to_s)
       required_id = get_associated_identifier.to_s
@@ -478,7 +535,12 @@ module HammerCLIForeman
       ids
     end
 
+    def self.failure_message(msg = nil)
+      super(msg) || default_message(_('Could not disassociate the %{resource_name}'))
+    end
+
+    def self.success_message(msg = nil)
+      super(msg) || default_message(_('The %{resource_name} has been disassociated'))
+    end
   end
-
-
 end

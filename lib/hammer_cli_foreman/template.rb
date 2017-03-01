@@ -45,6 +45,7 @@ module HammerCLIForeman
     class InfoCommand < HammerCLIForeman::InfoCommand
 
       output ListCommand.output_definition do
+        field :locked, _("Locked"), Fields::Boolean
         HammerCLIForeman::References.operating_systems(self)
         HammerCLIForeman::References.taxonomies(self)
       end
@@ -142,14 +143,52 @@ module HammerCLIForeman
     end
 
 
+    class BuildPXEDefaultCommand < HammerCLIForeman::Command
+
+      action :build_pxe_default
+
+      command_name "build-pxe-default"
+      desc _("Update the default PXE menu on all configured TFTP servers")
+
+      def print_data(message)
+        puts message
+      end
+
+      build_options
+    end
+
+    class CloneCommand < HammerCLIForeman::SingleResourceCommand
+      action :clone
+      command_name 'clone'
+
+      success_message _('Config template cloned')
+      failure_message _('Could not clone the config template')
+
+      validate_options do
+        option(:option_new_name).required
+      end
+
+      def self.create_option_builder
+        builder = super
+        builder.builders << SearchablesUpdateOptionBuilder.new(resource, searchables) if resource_defined?
+        builder
+      end
+
+      def method_options_for_params(params, include_nil = true)
+        opts = super
+        # overwrite searchables with correct values
+        searchables.for(resource).each do |s|
+          new_value = get_option_value("new_#{s.name}")
+          opts[s.name] = new_value unless new_value.nil?
+        end
+        opts
+      end
+
+      build_options
+    end
+
     HammerCLIForeman::AssociatingCommands::OperatingSystem.extend_command(self)
 
-
     autoload_subcommands
-
   end
-
 end
-
-
-

@@ -12,6 +12,7 @@ module HammerCLIForeman
       output do
         field :id, _("Id")
         field :name, _("Name")
+        field :description, _("Description")
       end
 
       build_options
@@ -24,6 +25,7 @@ module HammerCLIForeman
       option '--id', 'ID', _("Location numeric id to search by")
 
       output ListCommand.output_definition do
+        field nil, _("Parent"), Fields::SingleReference, :key => :parent
         HammerCLIForeman::References.users(self)
         HammerCLIForeman::References.smart_proxies(self)
         HammerCLIForeman::References.subnets(self)
@@ -79,6 +81,27 @@ module HammerCLIForeman
       build_options do |o|
         o.expand.primary(:organizations)
       end
+    end
+
+
+    class SetParameterCommand < HammerCLIForeman::Parameter::SetCommand
+      desc _("Create or update parameter for a location.")
+
+      success_message_for :update, _("Parameter [%{name}] updated to value [%{value}]")
+      success_message_for :create, _("Parameter [%{name}] created with value [%{value}]")
+      failure_message _("Could not set location parameter")
+
+      build_options
+    end
+
+
+    class DeleteParameterCommand < HammerCLIForeman::Parameter::DeleteCommand
+      desc _("Delete parameter for a location.")
+
+      success_message _("Parameter [%{name}] deleted")
+      failure_message _("Could not delete location parameter")
+
+      build_options
     end
 
     HammerCLIForeman::AssociatingCommands::Hostgroup.extend_command(self)

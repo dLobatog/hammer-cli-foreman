@@ -17,15 +17,15 @@ Gem::Specification.new do |s|
 Foreman commands for Hammer CLI
 EOF
 
+  locales = Dir['locale/*'].select { |f| File.directory?(f) }
+  s.files = Dir['{lib,doc,test,config}/**/*', 'LICENSE', 'README*'] +
+    locales.map { |loc| "#{loc}/LC_MESSAGES/hammer-cli-foreman.mo" }
 
-
-  s.files            = Dir['{lib,doc,test,locale}/**/*', 'README*']
   s.test_files       = Dir['{test}/**/*']
   s.extra_rdoc_files = Dir['{doc}/**/*', 'README*']
   s.require_paths = ["lib"]
 
-  s.add_dependency 'hammer_cli', '>= 0.1.2'
-  s.add_dependency 'apipie-bindings', '>= 0.0.8'
-  s.add_dependency 'rest-client', '>= 1.6.5', '< 1.7' # lower versions don't allow setting infinite timeouts, higher versions are not ruby 1.8 compatible
+  s.add_dependency 'hammer_cli', '>= 0.9.0'
+  s.add_dependency 'apipie-bindings', '>= 0.0.19'
 
 end

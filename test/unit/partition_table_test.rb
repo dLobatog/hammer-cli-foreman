@@ -15,6 +15,9 @@ describe HammerCLIForeman::PartitionTable do
   end
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:ptables, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::PartitionTable::ListCommand.new("", ctx) }
 
@@ -24,7 +27,7 @@ describe HammerCLIForeman::PartitionTable do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
       it_should_print_columns ["Id", "Name", "OS Family"]

@@ -8,6 +8,9 @@ describe HammerCLIForeman::Architecture do
   include CommandTestHelper
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:architectures, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::Architecture::ListCommand.new("", ctx) }
 
@@ -17,7 +20,7 @@ describe HammerCLIForeman::Architecture do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
       it_should_print_column "Name"

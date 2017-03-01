@@ -8,6 +8,9 @@ describe HammerCLIForeman::CommonParameter do
   include CommandTestHelper
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:common_parameters, :index, [])
+    end
 
     let(:cmd) { HammerCLIForeman::CommonParameter::ListCommand.new("", ctx) }
 
@@ -17,7 +20,7 @@ describe HammerCLIForeman::CommonParameter do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) { count_records(cmd.resource.call(:index)) }
 
       it_should_print_n_records
       it_should_print_columns  ["Name", "Value"]
@@ -27,6 +30,9 @@ describe HammerCLIForeman::CommonParameter do
 
 
   context "SetCommand" do
+    before do
+      ResourceMocks.common_parameter_show
+    end
 
     let(:cmd) { HammerCLIForeman::CommonParameter::SetCommand.new("", ctx) }
 

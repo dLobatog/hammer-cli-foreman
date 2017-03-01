@@ -8,6 +8,9 @@ describe HammerCLIForeman::PuppetClass do
   include CommandTestHelper
 
   context "ListCommand" do
+    before do
+      ResourceMocks.mock_action_call(:puppetclasses, :index, {})
+    end
 
     let(:cmd) { HammerCLIForeman::PuppetClass::ListCommand.new("", ctx) }
 
@@ -18,7 +21,10 @@ describe HammerCLIForeman::PuppetClass do
     end
 
     context "output" do
-      let(:expected_record_count) { cmd.resource.call(:index).length }
+      let(:expected_record_count) do
+        # data are retuned in specific format
+        HammerCLIForeman.collection_to_common_format(cmd.resource.call(:index)).first.keys.count
+      end
 
       it_should_print_n_records
       it_should_print_column "Id"
@@ -57,12 +63,27 @@ describe HammerCLIForeman::PuppetClass do
     let(:cmd) { HammerCLIForeman::PuppetClass::SCParamsCommand.new("", ctx) }
 
     context "parameters" do
-      it_should_accept "name", ["--name=env"]
-      it_should_accept "id", ["--id=1"]
+      it_should_accept "puppet-class", ["--puppet-class=cls"]
+      it_should_accept "puppet-class-id", ["--puppet-class-id=1"]
       # it_should_fail_with "name or id missing", [] # TODO: temporarily disabled, parameters are checked in the id resolver
     end
 
   end
 
+  context "SmartVariablesCommand" do
+
+    before :each do
+      ResourceMocks.smart_variables_index
+    end
+
+    let(:cmd) { HammerCLIForeman::PuppetClass::SmartVariablesCommand.new("", ctx) }
+
+    context "parameters" do
+      it_should_accept "puppet-class", ["--puppet-class=cls"]
+      it_should_accept "puppet-class-id", ["--puppet-class-id=1"]
+      # it_should_fail_with "name or id missing", [] # TODO: temporarily disabled, parameters are checked in the id resolver
+    end
+
+  end
 
 end

@@ -1,122 +1,28 @@
+require 'hammer_cli_foreman/fact'
 require 'hammer_cli_foreman/report'
 require 'hammer_cli_foreman/puppet_class'
 require 'hammer_cli_foreman/smart_class_parameter'
+require 'hammer_cli_foreman/smart_variable'
+require 'hammer_cli_foreman/interface'
+require 'hammer_cli_foreman/hosts/common_update_options'
+require 'hammer_cli_foreman/hosts/common_update_help'
 
 require 'highline/import'
 
 module HammerCLIForeman
 
-  module CommonHostUpdateOptions
-
-    def self.included(base)
-      base.option "--environment-id", "ENVIRONMENT_ID", " "
-      base.option "--architecture-id", "ARCHITECTURE_ID", " "
-      base.option "--domain-id", "DOMAIN_ID", " "
-      base.option "--puppet-proxy-id", "PUPPET_PROXY_ID", " "
-      base.option "--operatingsystem-id", "OPERATINGSYSTEM_ID", " "
-      base.option "--partition-table-id", "PARTITION_TABLE_ID", " "
-      base.option "--compute-resource-id", "COMPUTE_RESOURCE", " "
-      base.option "--puppetclass-ids", "PUPPETCLASS_IDS", " ",
-        :format => HammerCLI::Options::Normalizers::List.new
-      base.option "--root-password", "ROOT_PW", " "
-      base.option "--ask-root-password", "ASK_ROOT_PW", " ",
-        :format => HammerCLI::Options::Normalizers::Bool.new
-
-
-      bme_options = {}
-      bme_options[:default] = 'true' if base.action.to_sym == :create
-
-      bme_options[:format] = HammerCLI::Options::Normalizers::Bool.new
-      base.option "--managed", "MANAGED", " ", bme_options
-      bme_options[:format] = HammerCLI::Options::Normalizers::Bool.new
-      base.option "--build", "BUILD", " ", bme_options
-      bme_options[:format] = HammerCLI::Options::Normalizers::Bool.new
-      base.option "--enabled", "ENABLED", " ",  bme_options
-
-      base.option "--parameters", "PARAMS", _("Host parameters."),
-        :format => HammerCLI::Options::Normalizers::KeyValueList.new
-      base.option "--compute-attributes", "COMPUTE_ATTRS", _("Compute resource attributes."),
-        :format => HammerCLI::Options::Normalizers::KeyValueList.new
-      base.option "--volume", "VOLUME", _("Volume parameters"), :multivalued => true,
-        :format => HammerCLI::Options::Normalizers::KeyValueList.new
-      base.option "--interface", "INTERFACE", _("Interface parameters."), :multivalued => true,
-        :format => HammerCLI::Options::Normalizers::KeyValueList.new
-      base.option "--provision-method", "METHOD", " ",
-        :format => HammerCLI::Options::Normalizers::Enum.new(['build', 'image'])
-
-      base.build_options :without => [
-            # - temporarily disabled params until they are fixed in API ------------------------
-            # issue #3884
-            :puppet_class_ids,
-            # - temporarily disabled params that will be removed from the api ------------------
-            :provision_method, :capabilities, :flavour_ref, :image_ref, :start,
-            :network, :cpus, :memory, :provider, :type, :tenant_id, :image_id,
-            # - avoids future conflicts as :root_pass is currently missing in the api docs
-            :root_pass,
-            # ----------------------------------------------------------------------------------
-            :ptable_id, :host_parameters_attributes]
-    end
-
-    def self.ask_password
-      prompt = "Enter the root password for the host: "
-      ask(prompt) {|q| q.echo = false}
-    end
-
-    def request_params
-      params = super
-
-      params['host']['build'] = option_build unless option_build.nil?
-      params['host']['managed'] = option_managed unless option_managed.nil?
-      params['host']['enabled'] = option_enabled unless option_enabled.nil?
-
-      params['host']['puppetclass_ids'] = option_puppetclass_ids unless option_puppetclass_ids.nil?
-
-      params['host']['ptable_id'] = option_partition_table_id unless option_partition_table_id.nil?
-      params['host']['compute_resource_id'] = option_compute_resource_id unless option_compute_resource_id.nil?
-      params['host']['host_parameters_attributes'] = parameter_attributes
-      params['host']['compute_attributes'] = option_compute_attributes || {}
-      params['host']['compute_attributes']['volumes_attributes'] = nested_attributes(option_volume_list)
-      if option_compute_resource_id
-        params['host']['compute_attributes']['interfaces_attributes'] = nested_attributes(option_interface_list)
-        params['host']['compute_attributes']['nics_attributes'] = nested_attributes(option_interface_list)
-      else
-        params['host']['interfaces_attributes'] = nested_attributes(option_interface_list)
-      end
-
-      params['host']['root_pass'] = option_root_password unless option_root_password.nil?
-
-      if option_ask_root_password
-        params['host']['root_pass'] = HammerCLIForeman::CommonHostUpdateOptions::ask_password
-      end
-
-      params
-    end
-
-    private
-
-    def parameter_attributes
-      return {} unless option_parameters
-      option_parameters.collect do |key, value|
-        {"name"=>key, "value"=>value, "nested"=>""}
-      end
-    end
-
-    def nested_attributes(attrs)
-      return {} unless attrs
-
-      nested_hash = {}
-      attrs.each_with_index do |attr, i|
-        nested_hash[i.to_s] = attr
-      end
-      nested_hash
-    end
-
-  end
-
 
   class Host < HammerCLIForeman::Command
 
     resource :hosts
+
+    def self.extend_cr_help(cr)
+      cr_help_extensions[cr.name] = cr.method(:host_create_help)
+    end
+
+    def self.cr_help_extensions
+      @cr_help_extensions ||= {}
+    end
 
     class ListCommand < HammerCLIForeman::ListCommand
       # FIXME: list compute resource (model)
@@ -124,7 +30,7 @@ module HammerCLIForeman
         field :id, _("Id")
         field :name, _("Name")
         field nil, _("Operating System"), Fields::SingleReference, :key => :operatingsystem
-        field nil, _("Host Group"), Fields::SingleReference, :key => :hostgroup
+        field :hostgroup_title, _("Host Group")
         field :ip, _("IP")
         field :mac, _("MAC")
       end
@@ -136,15 +42,13 @@ module HammerCLIForeman
     class InfoCommand < HammerCLIForeman::InfoCommand
 
       def extend_data(host)
-        # FIXME: temporary fetching parameters until the api gets fixed.
-        # Noramlly they should come in the host's json.
-        # http://projects.theforeman.org/issues/5820
-        host["parameters"] = get_parameters(host["id"])
+        host['compute_resource_name'] ||= _('Bare Metal')
+        host['image_file'] = nil if host['image_file'].empty?
+        host['interfaces'] = host['interfaces'].map do |nic|
+          nic['_type'] = HammerCLIForeman::Interface.format_type(nic)
+          nic
+        end if host['interfaces']
 
-        host["_bmc_interfaces"] =
-          host["interfaces"].select{|intfs| intfs["type"] == "Nic::BMC" } rescue []
-        host["_managed_interfaces"] =
-          host["interfaces"].select{|intfs| intfs["type"] == "Nic::Managed" } rescue []
         host
       end
 
@@ -153,70 +57,73 @@ module HammerCLIForeman
         HammerCLIForeman.collection_to_common_format(params)
       end
 
-      output ListCommand.output_definition do
-        field :uuid, _("UUID")
-        field :certname, _("Cert name")
 
+      output do
+        field :id, _("Id")
+        field :uuid, _("UUID"), Fields::Field, :hide_blank => true
+        field :name, _("Name")
+        field nil, _("Organization"), Fields::SingleReference, :key => :organization, :hide_blank => true
+        field nil, _("Location"), Fields::SingleReference, :key => :location, :hide_blank => true
+        field :hostgroup_title, _("Host Group")
+        field nil, _("Compute Resource"), Fields::SingleReference, :key => :compute_resource
+        field nil, _("Compute Profile"), Fields::SingleReference, :key => :compute_profile, :hide_blank => true
         field nil, _("Environment"), Fields::SingleReference, :key => :environment
-
-        field :managed, _("Managed")
-        field :enabled, _("Enabled")
-        field :build, _("Build")
-
-        field :use_image, _("Use image")
-        field :disk, _("Disk")
-        field :image_file, _("Image file")
-
-        field :sp_name, _("SP Name")
-        field :sp_ip, _("SP IP")
-        field :sp_mac, _("SP MAC")
-
-        field nil, _("SP Subnet"), Fields::SingleReference, :key => :sp_subnet
+        field :puppet_ca_proxy_id, _("Puppet CA Id")
+        field :puppet_proxy_id, _("Puppet Master Id")
+        field :certname, _("Cert name")
+        field :managed, _("Managed"), Fields::Boolean
 
         field :installed_at, _("Installed at"), Fields::Date
         field :last_report, _("Last report"), Fields::Date
 
-        field :puppet_ca_proxy_id, _("Puppet CA Proxy Id")
-        field nil, _("Medium"), Fields::SingleReference, :key => :medium
-        field nil, _("Model"), Fields::SingleReference, :key => :model
-        field :owner_id, _("Owner Id")
-        field nil, _("Subnet"), Fields::SingleReference, :key => :subnet
-        field nil, _("Domain"), Fields::SingleReference, :key => :domain
-        field :puppet_proxy_id, _("Puppet Proxy Id")
-        field :owner_type, _("Owner Type")
-        field nil, _("Partition Table"), Fields::SingleReference, :key => :ptable
-        field nil, _("Architecture"), Fields::SingleReference, :key => :architecture
-        field nil, _("Image"), Fields::SingleReference, :key => :image
-        field nil, _("Compute Resource"), Fields::SingleReference, :key => :compute_resource
-
-        field :comment, _("Comment")
-
-        collection :_bmc_interfaces, _("BMC Network Interfaces"), :hide_blank => true do
-          field :id, _("Id")
-          field :name, _("Name")
+        label _("Network") do
           field :ip, _("IP")
           field :mac, _("MAC")
-          field :domain_id, _("Domain Id")
-          field :domain_name, _("Domain Name")
-          field :subnet_id, _("Subnet Id")
-          field :subnet_name, _("Subnet Name")
-          field :username, _("BMC Username")
-          field :password, _("BMC Password")
+          field nil, _("Subnet"), Fields::SingleReference, :key => :subnet
+          field nil, _("Domain"), Fields::SingleReference, :key => :domain
+          field nil, _("Service provider"), Fields::Label, :hide_blank => true do
+            field :sp_name, _("SP Name"), Fields::Field, :hide_blank => true
+            field :sp_ip, _("SP IP"), Fields::Field, :hide_blank => true
+            field :sp_mac, _("SP MAC"), Fields::Field, :hide_blank => true
+            field nil, _("SP Subnet"), Fields::SingleReference, :key => :sp_subnet, :hide_blank => true
+          end
         end
 
-        collection :_managed_interfaces, _("Managed Network Interfaces"), :hide_blank => true do
-          field :id, _("Id")
-          field :name, _("Name")
-          field :ip, _("IP")
-          field :mac, _("MAC")
-          field :domain_id, _("Domain Id")
-          field :domain_name, _("Domain Name")
-          field :subnet_id, _("Subnet Id")
-          field :subnet_name, _("Subnet Name")
+        collection :interfaces, _("Network interfaces") do
+          field :id, _('Id')
+          field :identifier, _('Identifier')
+          field :_type, _('Type')
+          field :mac, _('MAC address')
+          field :ip, _('IP address')
+          field :fqdn, _('FQDN')
+        end
+
+        label _("Operating system") do
+          field nil, _("Architecture"), Fields::SingleReference, :key => :architecture
+          field nil, _("Operating System"), Fields::SingleReference, :key => :operatingsystem
+          # provision_method
+          # for network based
+          field :build, _("Build"), Fields::Boolean
+          field nil, _("Medium"), Fields::SingleReference, :key => :medium
+          field nil, _("Partition Table"), Fields::SingleReference, :key => :ptable
+          field :disk, _("Custom partition table"), Fields::LongText
+          # image
+          # for image based
+          field nil, _("Image"), Fields::SingleReference, :key => :image, :hide_blank => true
+          field :image_file, _("Image file"), Fields::Field, :hide_blank => true
+          field :use_image, _("Use image"), Fields::Boolean, :hide_blank => true
         end
 
         HammerCLIForeman::References.parameters(self)
-        HammerCLIForeman::References.timestamps(self)
+
+        # additional info
+        label _("Additional info") do
+          field :owner_id, _("Owner Id")
+          field :owner_type, _("Owner Type")
+          field :enabled, _("Enabled"), Fields::Boolean
+          field nil, _("Model"), Fields::SingleReference, :key => :model, :hide_blank => true
+          field :comment, _("Comment"), Fields::LongText
+        end
       end
 
       build_options
@@ -290,10 +197,9 @@ module HammerCLIForeman
     end
 
 
-    class PuppetClassesCommand < HammerCLIForeman::AssociatedResourceListCommand
+    class PuppetClassesCommand < HammerCLIForeman::ListCommand
       command_name "puppet-classes"
-      resource :puppetclasses, :index
-      parent_resource :hosts
+      resource :puppetclasses
 
       output HammerCLIForeman::PuppetClass::ListCommand.output_definition
 
@@ -301,7 +207,10 @@ module HammerCLIForeman
         HammerCLIForeman::PuppetClass::ListCommand.unhash_classes(super)
       end
 
-      build_options :without => [:host_id, :hostgroup_id, :environment_id]
+      build_options do |o|
+        o.without(:hostgroup_id, :environment_id)
+        o.expand.only(:hosts)
+      end
     end
 
 
@@ -319,29 +228,29 @@ module HammerCLIForeman
       success_message _("Host created")
       failure_message _("Could not create the host")
 
-      include HammerCLIForeman::CommonHostUpdateOptions
+      include HammerCLIForeman::Hosts::CommonUpdateOptions
+      include HammerCLIForeman::Hosts::CommonUpdateHelp
 
       def validate_options
         super
         unless validator.any(:option_hostgroup_id, :option_hostgroup_name).exist?
           if option_managed
-            validator.all(:option_environment_id, :option_architecture_id, :option_domain_id,
-                          :option_puppet_proxy_id, :option_operatingsystem_id,
-                          :option_partition_table_id).required
-          else
-            # unmanaged host only requires environment
-            validator.option(:option_environment_id).required
+            validator.any(:option_architecture_name, :option_architecture_id).required
+            validator.any(:option_domain_name, :option_domain_id).required
+            validator.any(:option_operatingsystem_title, :option_operatingsystem_id).required
+            validator.any(:option_ptable_name, :option_ptable_id).required
           end
         end
       end
-    end
 
+    end
 
     class UpdateCommand < HammerCLIForeman::UpdateCommand
       success_message _("Host updated")
       failure_message _("Could not update the host")
 
-      include HammerCLIForeman::CommonHostUpdateOptions
+      include HammerCLIForeman::Hosts::CommonUpdateOptions
+      include HammerCLIForeman::Hosts::CommonUpdateHelp
     end
 
 
@@ -414,7 +323,7 @@ module HammerCLIForeman
 
       def option_power_action
         if option_force?
-          :cycle
+          :poweroff
         else
           :stop
         end
@@ -458,11 +367,37 @@ module HammerCLIForeman
     end
 
     class SCParamsCommand < HammerCLIForeman::SmartClassParametersList
-      parent_resource :hosts
+      build_options_for :hosts
+
+      def validate_options
+        super
+        validator.any(:option_host_name, :option_host_id).required
+      end
+    end
+
+    class SmartVariablesCommand < HammerCLIForeman::SmartVariablesList
+      build_options_for :hosts
+
+      def validate_options
+        super
+        validator.any(:option_host_name, :option_host_id).required
+      end
+    end
+
+    class RebuildConfigCommand < HammerCLIForeman::SingleResourceCommand
+      action :rebuild_config
+      command_name "rebuild-config"
+      desc _('Rebuild orchestration related configurations for host')
+      success_message _('Configuration successfully rebuilt.')
+
       build_options
     end
 
     autoload_subcommands
+
+    subcommand 'interface', HammerCLIForeman::Interface.desc, HammerCLIForeman::Interface
   end
 
 end
+
+require 'hammer_cli_foreman/compute_resources/all'
